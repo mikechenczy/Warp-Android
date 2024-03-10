@@ -1,37 +1,38 @@
-package com.mj.nat.client;
+package com.mj.warp.ws.server;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
+import io.netty.handler.stream.ChunkedWriteHandler;
 
 /**
  * @author Mike_Chen
  * @date 2023/9/8
  * @apiNote
  */
-public class Client {
-    public static String url = "ws://localhost:11451/ws";
-    public static int serverPort;
-    public static String host;
+public class Server {
+    public static String ip = "127.0.0.1";
+    public static int port = 3389;
+    public static int serverPort = 8080;
     public static void main(String[] args) {
         if(args!=null) {
             if(args.length>=1)
-                url = args[0];
+                ip = args[0];
             try {
                 if(args.length>=2)
-                    serverPort = Integer.parseInt(args[1]);
+                    port = Integer.parseInt(args[1]);
+                if(args.length>=3)
+                    serverPort = Integer.parseInt(args[2]);
             } catch (Exception e) {
                 e.printStackTrace();
                 return;
             }
-            if(args.length>=3)
-                host = args[2];
         }
-        System.out.println(url);
-        System.out.println(serverPort);
-        System.out.println(host);
         EventLoopGroup bossGroup = new NioEventLoopGroup();
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         ChannelFuture channelFuture = null;
@@ -41,12 +42,21 @@ public class Client {
             b.group(bossGroup, workerGroup).channel(NioServerSocketChannel.class)
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
-                        public void initChannel(SocketChannel ch) {
+                        public void initChannel(SocketChannel ch) throws Exception {
                             ChannelPipeline pipeline = ch.pipeline();
+                            pipeline.addLast(new HttpObjectAggregator(Integer.MAX_VALUE));
+                            pipeline.addLast(new HttpServerCodec());
+                            pipeline.addLast(new ChunkedWriteHandler());
+                            pipeline.addLast(new WebSocketServerProtocolHandler("/ws"));
                             pipeline.addLast(new ClientHandler());
                         }
+
                     });
             channelFuture = b.bind(serverPort).sync();
+
+            /*channelFuture.addListener((ChannelFutureListener) channelFuture -> {
+                // 服务器已启动
+            });*/
             channelFuture.channel().closeFuture().sync();
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -54,12 +64,13 @@ public class Client {
             if (channelFuture != null) {
                 channelFuture.channel().close().syncUninterruptibly();
             }
-            if (!bossGroup.isShutdown()) {
+            if ((bossGroup != null) && (!bossGroup.isShutdown())) {
                 bossGroup.shutdownGracefully();
             }
-            if (!workerGroup.isShutdown()) {
+            if ((workerGroup != null) && (!workerGroup.isShutdown())) {
                 workerGroup.shutdownGracefully();
             }
+            // 服务器已关闭
         }
     }
 }

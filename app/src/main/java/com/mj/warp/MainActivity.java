@@ -1,4 +1,4 @@
-package com.mj.nat;
+package com.mj.warp;
 
 import android.os.Bundle;
 import android.widget.Button;
@@ -6,7 +6,7 @@ import android.widget.EditText;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.mj.nat.client.Client;
+import com.mj.warp.http.client.Client;
 
 public class MainActivity extends AppCompatActivity {
     public EditText wsEditText;

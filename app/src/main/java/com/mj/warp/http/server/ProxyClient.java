@@ -1,14 +1,20 @@
-package com.mj.nat.server;
+package com.mj.warp.http.server;
 
-import com.mj.nat.Utils;
+import com.alibaba.fastjson.JSONObject;
+import com.mj.warp.http.Utils;
+import com.mj.warp.http.server.controller.ProxyController;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
+import javax.servlet.http.HttpServletResponse;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -17,15 +23,11 @@ import java.util.List;
  * @apiNote
  */
 public class ProxyClient extends Thread {
-    public ChannelHandlerContext ctxOrigin;
+    public long uniqueId;
     public ChannelHandlerContext ctx;
     public boolean closed;
-    public ProxyClient(ChannelHandlerContext ctx) {
-        this.ctxOrigin = ctx;
-    }
-    public ProxyClient connect() {
-        start();
-        return this;
+    public ProxyClient(long uniqueId) {
+        this.uniqueId = uniqueId;
     }
 
     public List<byte[]> byteBufList = new ArrayList<>();
@@ -49,10 +51,40 @@ public class ProxyClient extends Thread {
         }
     }
 
+    public final List<Byte> sendBackDump = new ArrayList<>();
+
     public void sendBack(byte[] msg) {
-        if(ClientHandler.ctxList.containsKey(ctxOrigin)) {
-            ctxOrigin.writeAndFlush(new BinaryWebSocketFrame(Utils.bytes2ByteBuf(msg)));
+        synchronized (sendBackDump) {
+            Byte[] bytes = new Byte[msg.length];
+            for (int i = 0; i < msg.length; i++) {
+                bytes[i] = msg[i];
+            }
+            Collections.addAll(sendBackDump, bytes);
         }
+    }
+
+    public long index = 0;
+
+    public String getNeedToSend() {
+        if(sendBackDump.size()==0)
+            return "{}";
+        synchronized (sendBackDump) {
+            Byte[] msg = sendBackDump.toArray(new Byte[]{});
+            byte[] bytes = new byte[msg.length];
+            for (int i = 0; i < msg.length; i++) {
+                bytes[i] = msg[i];
+            }
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("index", index++);
+            jsonObject.put("bytes", bytes);
+            sendBackDump.clear();
+            return jsonObject.toJSONString();
+        }
+    }
+
+    private void write(HttpServletResponse response, byte[] bytes) throws IOException {
+        response.getOutputStream().write(bytes);
+        response.getOutputStream().flush();
     }
 
     @Override
@@ -82,7 +114,6 @@ public class ProxyClient extends Thread {
         if(ctx!=null) {
             ctx.close();
         }
-        ClientHandler.ctxList.remove(ctxOrigin);
-        ctxOrigin.close();
+        ProxyController.map.remove(uniqueId);
     }
 }

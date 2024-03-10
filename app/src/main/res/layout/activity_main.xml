@@ -12,7 +12,7 @@
         android:id="@+id/edit_text_ws"
         android:layout_width="250dp"
         android:layout_height="wrap_content"
-        android:text="ws://desktophome.mjczy.life:2052/ws"/>
+        android:text="http://ipv6.mjczy.top:3389/"/>
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -21,14 +21,15 @@
         android:id="@+id/edit_text_port"
         android:layout_width="80dp"
         android:layout_height="wrap_content"
-        android:text="3389"/>
+        android:text="8081"/>
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="请输入伪装域名" />
+        android:text="请输入线程数量" />
     <EditText
         android:id="@+id/edit_text_host"
         android:layout_width="100dp"
+        android:text="5"
         android:layout_height="wrap_content"/>
     <Button
         android:id="@+id/button_start"
